@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from eecc_redact import APP_ID, APP_NAME, MODULE, platforms
+from eecc_redact import APP_ID, APP_NAME, MODULE
 from eecc_redact.desktop import linux, windows
 
 
@@ -72,11 +72,8 @@ def test_windows_autostart_writes_one_quoted_command_and_removes_it(monkeypatch)
     windows.set_autostart(False, registry)  # already gone is not an error
 
 
-def test_linux_launcher_is_the_flatpak_the_appimage_file_or_the_installed_command(monkeypatch):
+def test_linux_launcher_is_the_appimage_file_or_the_installed_command(monkeypatch):
     monkeypatch.delenv("APPIMAGE", raising=False)
-    monkeypatch.setattr(platforms, "flatpak", lambda: True)
-    assert linux.launcher() == ["flatpak", "run", APP_ID]
-    monkeypatch.setattr(platforms, "flatpak", lambda: False)
     monkeypatch.setattr(linux.shutil, "which", lambda name: f"/home/u/.local/bin/{name}")
     assert linux.launcher() == [f"/home/u/.local/bin/{APP_NAME}"]
     monkeypatch.setattr(linux.shutil, "which", lambda name: None)
@@ -90,7 +87,6 @@ def test_linux_launcher_is_the_flatpak_the_appimage_file_or_the_installed_comman
 def launcher_files(tmp_path, monkeypatch):
     monkeypatch.delenv("APPIMAGE", raising=False)
     monkeypatch.delenv("APPDIR", raising=False)
-    monkeypatch.setattr(platforms, "flatpak", lambda: False)
     monkeypatch.setattr(linux.shutil, "which", lambda name: "/opt/some dir/eecc-redact")
     entry = tmp_path / "applications" / f"{APP_ID}.desktop"
     icon = tmp_path / "icons" / f"{APP_ID}.png"

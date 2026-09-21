@@ -28,11 +28,6 @@ def wayland() -> bool:
     return os.environ.get("XDG_SESSION_TYPE") == "wayland"
 
 
-def flatpak() -> bool:
-    """Inside a Flatpak sandbox, which identifies the app to the portals itself."""
-    return LINUX and os.path.exists("/.flatpak-info")
-
-
 def terminal() -> bool:
     """Started from a terminal that shows our output.
 

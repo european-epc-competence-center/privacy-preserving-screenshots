@@ -1,8 +1,8 @@
 """Linux: talking to the desktop through xdg-desktop-portal, over jeepney.
 
-Wayland forbids reading the screen and grabbing keys, and a sandboxed app may
-not write autostart entries, so the desktop does these on eecc-redact's behalf and
-asks the user where it has to. jeepney rather than QtDBus: portal messages
+Wayland forbids reading the screen and grabbing keys, so the desktop does these
+on eecc-redact's behalf and asks the user where it has to; starting at login goes
+the same way. jeepney rather than QtDBus: portal messages
 carry nested types such as a(sa{sv}) that PySide cannot marshal.
 
 Requests block until the desktop answers, which can mean waiting for the user.
@@ -15,7 +15,7 @@ from contextlib import suppress
 from queue import Empty
 from typing import Any
 
-from eecc_redact import APP_ID, MODULE, platforms
+from eecc_redact import APP_ID, MODULE
 from eecc_redact.errors import AppError, Cancelled
 
 SERVICE = "org.freedesktop.portal.Desktop"
@@ -63,12 +63,11 @@ class Portal:
         self._router = DBusRouter(self._connection)
         self._bus = Proxy(message_bus, self._router, timeout=10)
         self._filters: list = []
-        if not platforms.flatpak():
-            # Outside a sandbox the portal cannot tell which app this is. Say so,
-            # or GlobalShortcuts refuses with "An app id is required". The desktop
-            # accepts the ID only if a matching .desktop entry is installed.
-            with suppress(PortalError):
-                self.call(REGISTRY, "Register", "sa{sv}", (APP_ID, {}))
+        # The portal cannot tell which app this is. Say so, or GlobalShortcuts
+        # refuses with "An app id is required". The desktop accepts the ID only
+        # if a matching .desktop entry is installed.
+        with suppress(PortalError):
+            self.call(REGISTRY, "Register", "sa{sv}", (APP_ID, {}))
 
     def __enter__(self) -> "Portal":
         return self

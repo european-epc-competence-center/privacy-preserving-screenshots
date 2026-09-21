@@ -11,7 +11,7 @@ from importlib.metadata import PackageNotFoundError, version
 APP_NAME = "eecc-redact"
 #: The import package: for `python -m`, and wherever a hyphen is not allowed.
 MODULE = __name__
-#: Reverse-DNS ID for the desktop entry, the portals and, later, the Flatpak.
+#: Reverse-DNS ID for the desktop entry and the portals.
 #: Changing it after release resets every user's hotkey approval on Linux.
 APP_ID = "io.github.european_epc_competence_center.eecc_redact"
 

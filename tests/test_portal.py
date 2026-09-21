@@ -131,7 +131,6 @@ def fake(monkeypatch):
         instance = FakePortal(**kwargs)
         fakes.append(instance)
         monkeypatch.setattr(portal, "SERVICE", instance.name)
-        monkeypatch.setattr(platforms, "flatpak", lambda: False)
         return instance
 
     yield make

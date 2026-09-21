@@ -11,12 +11,12 @@ from eecc_redact.config import Config
 
 
 def install_launcher() -> None:
-    """Linux outside a sandbox: write the launcher entry the desktop knows the app by.
+    """Linux: write the launcher entry the desktop knows the app by.
 
     Before Qt starts: it registers the app ID with the desktop's portal during
     startup, and the portal only accepts an ID it can find a launcher entry for.
     """
-    if platforms.LINUX and not platforms.flatpak():
+    if platforms.LINUX:
         from eecc_redact.desktop import linux
 
         with suppress(OSError):
@@ -55,7 +55,7 @@ def set_autostart(enabled: bool) -> bool:
 def remove_integration() -> None:
     """Undo starting at login and the launcher entry, for uninstalling."""
     set_autostart(False)
-    if platforms.LINUX and not platforms.flatpak():
+    if platforms.LINUX:
         from eecc_redact.desktop import linux
 
         linux.desktop_entry_path().unlink(missing_ok=True)

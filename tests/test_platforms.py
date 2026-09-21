@@ -57,11 +57,3 @@ def test_wayland_detection(monkeypatch, env, expected):
 def test_a_windowless_build_without_standard_output_is_not_a_terminal(monkeypatch):
     monkeypatch.setattr(platforms.sys, "stdout", None)  # what PyInstaller leaves on Windows
     assert platforms.terminal() is False
-
-
-def test_a_flatpak_is_recognised_by_its_sandbox_info(monkeypatch):
-    monkeypatch.setattr(platforms, "LINUX", True)
-    monkeypatch.setattr(platforms.os.path, "exists", lambda path: path == "/.flatpak-info")
-    assert platforms.flatpak() is True
-    monkeypatch.setattr(platforms, "LINUX", False)
-    assert platforms.flatpak() is False

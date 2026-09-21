@@ -1,7 +1,6 @@
 """Linux: the launcher entry, and starting at login through the Background portal.
 
-A Flatpak brings its own desktop entry and identity. Installed any other way,
-the app writes a launcher entry for itself on every start: it gives the app a
+The app writes a launcher entry for itself on every start: it gives the app a
 place in the app grid, and it is what lets the portals accept the app ID (see
 eecc_redact.portal.Portal). An AppImage is mounted somewhere new on every
 start, so the entry points at the AppImage file, not at the running program.
@@ -14,7 +13,7 @@ from pathlib import Path
 
 from platformdirs import user_data_path
 
-from eecc_redact import APP_ID, APP_NAME, MODULE, platforms
+from eecc_redact import APP_ID, APP_NAME, MODULE
 from eecc_redact.portal import Portal
 
 BACKGROUND = "org.freedesktop.portal.Background"
@@ -22,8 +21,6 @@ BACKGROUND = "org.freedesktop.portal.Background"
 
 def launcher() -> list[str]:
     """How a shortcut or a terminal starts the app."""
-    if platforms.flatpak():
-        return ["flatpak", "run", APP_ID]
     if appimage := os.environ.get("APPIMAGE"):
         return [appimage]
     executable = shutil.which(APP_NAME)
@@ -69,8 +66,6 @@ def set_autostart(enabled: bool) -> bool:
     GNOME asks the user only if background apps are restricted. Returns
     whether the app now starts at login.
     """
-    # Inside a sandbox the desktop adds `flatpak run` itself.
-    command = [APP_NAME] if platforms.flatpak() else launcher()
     with Portal() as portal:
         results = portal.request(
             BACKGROUND,
@@ -80,7 +75,7 @@ def set_autostart(enabled: bool) -> bool:
             {
                 "reason": ("s", f"Start {APP_NAME} at login, so the hotkey works right away"),
                 "autostart": ("b", enabled),
-                "commandline": ("as", command),
+                "commandline": ("as", launcher()),
                 "dbus-activatable": ("b", False),
             },
         )
