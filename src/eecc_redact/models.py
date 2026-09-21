@@ -43,7 +43,6 @@ class Finding:
 class Detection:
     findings: tuple[Finding, ...] = ()
     records_remaining: int | None = None
-    request_id: str = ""
     warnings: str = ""
 
     @property

@@ -123,7 +123,6 @@ class Shinrai:
         return Detection(
             findings=_findings(resp.json() or {}),
             records_remaining=_int(resp.headers.get("x-records-remaining")),
-            request_id=resp.headers.get("x-request-id", ""),
             warnings=resp.headers.get("x-shinrai-warnings", ""),
         )
 
