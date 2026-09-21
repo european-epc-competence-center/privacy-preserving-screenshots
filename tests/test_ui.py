@@ -189,6 +189,33 @@ def test_the_failure_dialog_offers_retry_or_discard_never_the_image():
     assert out.split() == ["retry", "discard"]
 
 
+def test_the_tray_starts_without_standard_streams_like_the_windows_build():
+    """PyInstaller's windowless build has sys.stdout and sys.stdin set to None."""
+    out = child(
+        QT,
+        """
+        import sys, uuid
+        from PySide6.QtCore import QTimer
+        from eecc_redact import instance, keystore
+        from eecc_redact.config import Config
+        from eecc_redact.ui import tray
+        instance.server_name = lambda: f"eecc-redact-test-{uuid.uuid4().hex[:8]}"
+        keystore.get_key = lambda: "shr_test_probe"
+        tray.Tray.start_hotkey = lambda self: None
+        tray.QSystemTrayIcon.isSystemTrayAvailable = staticmethod(lambda: True)
+        config = Config(setup_complete=True)
+        config.save = lambda: None
+        real = sys.stdout
+        sys.stdout = sys.stdin = None
+        QTimer.singleShot(300, app.quit)
+        code = tray.run_tray(config)
+        sys.stdout = real
+        print("EXIT", code)
+    """,
+    )
+    assert "EXIT 0" in out
+
+
 INSTANCE = """
     import sys
     from PySide6.QtCore import QCoreApplication, QTimer

@@ -8,7 +8,6 @@ On Windows the tray registers the hotkey itself. On Linux the desktop binds it
 through the GlobalShortcuts portal. Either way it works while the tray runs.
 """
 
-import sys
 from contextlib import suppress
 
 from PySide6.QtWidgets import QMenu, QMessageBox, QSystemTrayIcon
@@ -59,7 +58,7 @@ class Tray:
                 f"background. Start captures with `{APP_NAME} capture` instead."
             )
             print(message, flush=True)
-            if not sys.stdout.isatty():  # started from a launcher: nobody reads stdout
+            if not platforms.terminal():  # started from a launcher: nobody reads stdout
                 QMessageBox.information(None, APP_NAME, message)
             return 1
         self.icon.show()
@@ -70,7 +69,7 @@ class Tray:
                 return 0
             self.announced = False
         self.start_hotkey()
-        if sys.stdout.isatty():
+        if platforms.terminal():
             print(
                 f"{APP_NAME} is running in the tray, and this terminal is busy until you quit it "
                 f"(Ctrl-C). To keep the terminal, start it with `{APP_NAME} &` instead.",

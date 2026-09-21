@@ -31,3 +31,12 @@ def wayland() -> bool:
 def flatpak() -> bool:
     """Inside a Flatpak sandbox, which identifies the app to the portals itself."""
     return LINUX and os.path.exists("/.flatpak-info")
+
+
+def terminal() -> bool:
+    """Started from a terminal that shows our output.
+
+    A windowless build (the Windows installer's) has no standard streams at all:
+    they are None, not merely redirected.
+    """
+    return sys.stdout is not None and sys.stdout.isatty()
