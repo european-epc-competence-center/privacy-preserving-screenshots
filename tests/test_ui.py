@@ -53,9 +53,13 @@ def test_run_blocking_returns_from_a_worker_and_reraises_on_the_ui_thread():
 OVERLAY = (
     QT
     + """
+    import io
+    from PIL import Image
     from eecc_redact.capture.overlay import select_region
-    from eecc_redact.imaging import size
     import eecc_redact.capture.overlay as overlay
+    def size(png):
+        with Image.open(io.BytesIO(png)) as image:
+            return image.size
     screen = QGuiApplication.primaryScreen()
     frame = QPixmap(screen.geometry().size())
     frame.fill(QColor("white"))

@@ -3,9 +3,9 @@ import io
 import pytest
 from PIL import Image
 
-from conftest import png
+from conftest import png, size
 from eecc_redact.errors import AppError
-from eecc_redact.imaging import burn, size, to_png
+from eecc_redact.imaging import burn, to_png
 from eecc_redact.models import Box
 
 

@@ -49,6 +49,11 @@ def png(size=(120, 40), colour="white") -> bytes:
     return buffer.getvalue()
 
 
+def size(png: bytes) -> tuple[int, int]:
+    with Image.open(io.BytesIO(png)) as image:
+        return image.size
+
+
 def source(*scripts: str) -> str:
     """Join separately indented script fragments into one program."""
     return "\n".join(textwrap.dedent(script) for script in scripts)

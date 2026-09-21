@@ -27,11 +27,6 @@ def to_png(data: bytes) -> bytes:
     return _encode(image)
 
 
-def size(png: bytes) -> tuple[int, int]:
-    with Image.open(io.BytesIO(png)) as image:
-        return image.size
-
-
 def burn(png: bytes, boxes: Iterable[Box], *, padding: int = 0) -> bytes:
     with Image.open(io.BytesIO(png)) as source:
         image = source.convert("RGB")
