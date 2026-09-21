@@ -1,0 +1,50 @@
+[project]
+name = "eecc-redact"
+version = "0.1.0"
+description = "Screenshots with the personal data already covered"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.13"
+authors = [{ name = "European EPC Competence Center" }]
+dependencies = [
+    "httpx>=0.28",
+    "jeepney>=0.9; sys_platform == 'linux'",
+    "keyring>=25",
+    "pillow>=11",
+    "platformdirs>=4",
+    "pyside6>=6.8",
+    "python-dotenv>=1.0",
+]
+
+[project.urls]
+Repository = "https://github.com/european-epc-competence-center/privacy-preserving-screenshots"
+
+[project.scripts]
+eecc-redact = "eecc_redact.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+]
+build = [
+    "pyinstaller>=6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["eecc_redact", "conftest"]

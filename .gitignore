@@ -1,0 +1,22 @@
+# Secrets. The API key lives in .env for development only.
+.env
+.env.*
+!.env.example
+
+# Python and uv
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Local scratch output
+/out/
+
+# Editors
+.idea/
+.vscode/
+*.swp
