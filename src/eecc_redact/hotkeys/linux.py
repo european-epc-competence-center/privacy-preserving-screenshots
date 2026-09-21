@@ -4,10 +4,6 @@ The first time, GNOME shows a dialog where the user confirms the suggested key
 or picks another; it remembers the answer and binds silently on later starts.
 The shortcut belongs to eecc-redact's portal session, so it works exactly while the
 tray runs: quitting turns it off. The key is changed in the desktop's settings.
-
-Three other designs were tried and dropped: a gsettings custom shortcut (2.7 s
-per press, silently lost from a bundle), a shortcut calling the tray over
-D-Bus (GNOME-only, impossible from a sandbox), and the portal, which stayed.
 """
 
 import os

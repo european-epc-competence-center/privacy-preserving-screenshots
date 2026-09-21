@@ -44,8 +44,8 @@ class _Selection:
             return
         self.done = True
         self.png = png
-        # close() only hides a widget, so nothing ever emits `destroyed`:
-        # waiting on it hung the capture forever. End the loop explicitly.
+        # close() only hides a widget, so nothing emits `destroyed`; end the
+        # loop explicitly.
         for overlay in self.overlays:
             overlay.close()
         self.loop.quit()
@@ -75,7 +75,7 @@ class Overlay(QWidget):
         if self._origin is None or self._current is None:
             return QRect()
         # From width and height, not QRect(topLeft, bottomRight): Qt counts the
-        # bottom-right point as inside, so a 200 px drag became a 201 px crop.
+        # bottom-right point as inside, which would make the crop one pixel larger.
         x0, y0, x1, y1 = self._origin.x(), self._origin.y(), self._current.x(), self._current.y()
         return QRect(min(x0, x1), min(y0, y1), abs(x1 - x0), abs(y1 - y0))
 

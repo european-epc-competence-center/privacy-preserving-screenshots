@@ -1,4 +1,4 @@
-"""The ShinrAI client, ported from the probe that was verified against production.
+"""The ShinrAI client.
 
 One call to `image:redact` returns every finding with its pixel boxes; the
 boxes are drawn locally. The call is never retried automatically: the route

@@ -35,7 +35,7 @@ CloseApplications=force
 RestartApplications=no
 
 [InstallDelete]
-; Whatever an earlier version shipped and this one no longer does.
+; On upgrade: remove files a previous version installed that this one no longer ships.
 Type: filesandordirs; Name: "{app}\_internal"
 
 [Files]
