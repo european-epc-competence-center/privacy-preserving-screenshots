@@ -1,0 +1,50 @@
+name: Windows installer
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.1.0
+
+      - name: The tag must match the package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = (uv run python -c "import eecc_redact; print(eecc_redact.__version__)").Trim()
+          if ("v$version" -ne "${{ github.ref_name }}") {
+            throw "Tag ${{ github.ref_name }} does not match eecc-redact $version"
+          }
+
+      - run: uv run pytest -q
+
+      - run: choco install innosetup --no-progress -y
+
+      - name: Build the installer
+        shell: pwsh
+        run: packaging\windows\build.ps1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: eecc-redact-windows-installer
+          path: |
+            dist/eecc-redact-setup-*.exe
+            dist/eecc-redact-setup-*.exe.sha256
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3.0.3
+        with:
+          files: |
+            dist/eecc-redact-setup-*.exe
+            dist/eecc-redact-setup-*.exe.sha256
