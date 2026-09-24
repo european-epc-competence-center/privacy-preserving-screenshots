@@ -13,9 +13,14 @@ hotkey → region → RGB PNG → ShinrAI detection → review → boxes burned 
 Detection is done by [ShinrAI](https://shinrai.innovius.io), a BERT-based
 service that finds personal data in text and images
 ([API documentation](https://shinrai.innovius.io/docs?lang=en)). eecc-redact
-sends the captured region, as an RGB PNG with all metadata stripped, to
-ShinrAI's `image:redact` endpoint and gets back each finding with its pixel
-coordinates. The boxes are drawn locally, on the original frame.
+sends the captured region, as an RGB PNG with all metadata stripped, to the
+[ShinrAI PII API v2](https://shinrai.innovius.io/public-docs/pii-api-v2.md)
+(`POST /v2/detect` with an image input) and gets back every finding the model
+offers with its boxes in the pixels of the capture. The boxes are drawn
+locally, on the original frame. A deployment that does not serve images on
+the v2 API yet is used through its Google-compatible `image:redact` endpoint;
+`api = "v2"` or `api = "google"` in the settings file forces one route, the
+default `auto` decides from `GET /v2/capabilities` once per run.
 
 ## Develop
 
