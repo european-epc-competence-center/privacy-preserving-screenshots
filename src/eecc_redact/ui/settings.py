@@ -87,9 +87,8 @@ class SettingsDialog(QDialog):
         self.client_factory = client_factory
         self.replacing = self.checking = False
         self.candidate = ""
-        key, source = keystore.key_source()
         # Only a key already there when setup opened is "from an earlier install".
-        self.inherited = first_run and source == "keychain" and bool(key)
+        self.inherited = first_run and bool(keystore.get_key())
 
         self.setWindowTitle(f"Set up {APP_NAME}" if first_run else f"{APP_NAME} settings")
         self.setWindowIcon(icon())
@@ -236,7 +235,7 @@ class SettingsDialog(QDialog):
     # -- key -------------------------------------------------------------------
 
     def refresh_key(self) -> None:
-        key, source = keystore.key_source()
+        key = keystore.get_key()
         kind = {"production": "production ", "sandbox": "sandbox "}.get(
             keystore.environment(key), ""
         )
@@ -244,21 +243,14 @@ class SettingsDialog(QDialog):
         self.manage.setVisible(bool(key) and not self.replacing)
         if not key:
             self.key_status.setText("No key stored yet.")
-        elif source == "keychain" and self.inherited and not self.replacing:
+        elif self.inherited and not self.replacing:
             self.key_status.setText(
                 f"A {kind}key is already stored in {store_name()}, probably from an earlier "
                 f"{APP_NAME} on this computer. Keep it, or replace or remove it."
             )
-        elif source == "keychain":
-            self.key_status.setText(f"A {kind}key is stored in {store_name()}.")
         else:
-            self.key_status.setText(
-                f"Using the {kind}key from the environment ({keystore.ENV_VAR}). {APP_NAME} "
-                "can only replace or remove a key it stored itself."
-            )
-        own = source in ("keychain", "")
-        self.replace_button.setEnabled(own)
-        self.remove_button.setEnabled(own and bool(key))
+            self.key_status.setText(f"A {kind}key is stored in {store_name()}.")
+        self.remove_button.setEnabled(bool(key))
         self.key_field.setEnabled(not self.checking)
         self.check_button.setEnabled(not self.checking)
         self.finish_button.setEnabled(bool(key) or not self.first_run)

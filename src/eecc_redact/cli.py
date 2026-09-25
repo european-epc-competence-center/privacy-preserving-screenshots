@@ -19,25 +19,13 @@ from pathlib import Path
 from eecc_redact import APP_NAME, __version__, keystore, platforms
 from eecc_redact.config import Config
 from eecc_redact.errors import AppError
-from eecc_redact.keystore import ENV_VAR, environment, key_source, looks_like_key, scrub
-
-
-def load_dotenv() -> None:
-    """Development only: a .env in the working tree or the checkout. Frozen builds ignore it."""
-    if getattr(sys, "frozen", False):
-        return
-    from dotenv import find_dotenv
-    from dotenv import load_dotenv as load
-
-    path = Path(find_dotenv(usecwd=True) or Path(__file__).resolve().parents[2] / ".env")
-    if path.is_file():
-        load(path, override=False)  # a real environment variable still wins
+from eecc_redact.keystore import environment, looks_like_key, scrub
 
 
 def cmd_doctor(_args: argparse.Namespace, config: Config) -> int:
-    key, source = key_source()
+    key = keystore.get_key()
     if not key:
-        print(f"No key. Run `{APP_NAME} key set` or set {ENV_VAR}.", file=sys.stderr)
+        print(f"No key. Run `{APP_NAME} key set`.", file=sys.stderr)
         return 2
     from eecc_redact.capture import backend
     from eecc_redact.pipeline import client_for
@@ -46,7 +34,7 @@ def cmd_doctor(_args: argparse.Namespace, config: Config) -> int:
         caps = client.capabilities()
     rows = [
         ("deployment", config.base_url),
-        ("key", f"{environment(key)}, from the {source}"),
+        ("key", environment(key)),
         ("plan", caps.plan or "unknown"),
         ("records", f"{caps.records:,} left" if caps.records is not None else "unknown"),
         ("models", (", ".join(caps.models) or "none reported") + "  (usable with this key)"),
@@ -148,15 +136,12 @@ def cmd_key(args: argparse.Namespace, _config: Config) -> int:
         keystore.set_key(value)
         print(f"Stored in the OS keychain ({environment(value)} key).")
         return 0
-    key, source = key_source()
+    key = keystore.get_key()
     if args.action == "delete":
-        if source == "environment":
-            print(f"The key comes from {ENV_VAR}; unset it there.", file=sys.stderr)
-            return 1
         keystore.delete_key()
         print("Key removed from the OS keychain." if key else "No key was stored.")
         return 0
-    print(f"{environment(key)} key, from the {source}" if key else "No key stored.")
+    print(f"{environment(key)} key in the OS keychain." if key else "No key stored.")
     return 0
 
 
@@ -196,8 +181,7 @@ def cmd_uninstall(args: argparse.Namespace, _config: Config) -> int:
     if folder.name == APP_NAME and folder.is_dir():  # only ever the app's own folder
         shutil.rmtree(folder, ignore_errors=True)
         print("Removed the settings.")
-    key, source = key_source()
-    if key and source == "keychain":
+    if keystore.get_key():
         forget = args.forget_key or (
             sys.stdin is not None
             and sys.stdin.isatty()
@@ -264,7 +248,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     args = build_parser().parse_args(raw)
-    load_dotenv()
     config = Config.load()
     handlers = {
         None: cmd_tray,

@@ -28,7 +28,7 @@ Requires [uv](https://docs.astral.sh/uv/); it fetches Python 3.13 itself.
 
 ```sh
 uv sync                               # environment and dependencies
-cp .env.example .env                  # then put a sandbox key (shr_test_…) in it
+uv run eecc-redact key set            # once: a sandbox key (shr_test_…) into the OS keychain
 uv run pytest                         # the suite; dialogs run headless in child processes
 uv run ruff check . && uv run ruff format --check .
 ```
@@ -47,9 +47,8 @@ uv run eecc-redact key delete         # remove it from the keychain
 uv run eecc-redact uninstall          # undo what the app did to this account
 ```
 
-The key is looked up in this order: the `SHINRAI_API_KEY` environment variable
-(which `.env` fills when running from the checkout), then the OS keychain.
-`.env` is ignored by git.
+The key lives in the OS keychain only; the checkout and an installed
+`eecc-redact` share the same entry.
 
 ## Commands
 
@@ -83,7 +82,7 @@ src/eecc_redact/
 ├── imaging.py      PNG normalization and drawing the boxes
 ├── models.py       Box, Finding, Detection
 ├── config.py       settings file (never the key)
-├── keystore.py     the key: environment or OS keychain; scrubbing
+├── keystore.py     the key in the OS keychain; scrubbing
 ├── errors.py       AppError, Cancelled
 ├── platforms.py    the one place that asks which OS this is
 ├── instance.py     one tray per user, and messages to it

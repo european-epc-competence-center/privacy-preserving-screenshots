@@ -28,18 +28,6 @@ def test_missing_config_gives_defaults():
     assert Config.load() == Config()
 
 
-def test_the_environment_wins_over_the_keychain(monkeypatch, isolated):
-    isolated["key"] = "shr_live_from_keychain"
-    assert keystore.key_source() == ("shr_live_from_keychain", "keychain")
-    monkeypatch.setenv(keystore.ENV_VAR, " shr_test_from_env ")
-    assert keystore.key_source() == ("shr_test_from_env", "environment")
-
-
-def test_no_key_anywhere():
-    assert keystore.key_source() == ("", "")
-    assert keystore.get_key() == ""
-
-
 def test_key_environment_and_scrubbing():
     assert keystore.environment("shr_live_abc") == "production"
     assert keystore.environment("shr_test_abc") == "sandbox"

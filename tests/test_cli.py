@@ -40,15 +40,9 @@ def test_version_and_key_status(capsys, isolated):
     assert "No key stored" in capsys.readouterr().out
     isolated["key"] = "shr_test_abc"
     assert main(["key"]) == 0
-    assert "sandbox key, from the keychain" in capsys.readouterr().out
+    assert "sandbox key in the OS keychain" in capsys.readouterr().out
     assert main(["key", "delete"]) == 0
     assert isolated["key"] == ""
-
-
-def test_a_key_from_the_environment_is_not_ours_to_delete(monkeypatch, capsys):
-    monkeypatch.setenv("SHINRAI_API_KEY", "shr_test_env")
-    assert main(["key", "delete"]) == 1
-    assert "SHINRAI_API_KEY" in capsys.readouterr().err
 
 
 def test_doctor_without_a_key_says_what_to_do(capsys):
@@ -56,13 +50,13 @@ def test_doctor_without_a_key_says_what_to_do(capsys):
     assert f"{APP_NAME} key set" in capsys.readouterr().err
 
 
-def test_redact_burns_the_reported_boxes_into_a_new_file(tmp_path, monkeypatch, capsys):
+def test_redact_burns_the_reported_boxes_into_a_new_file(tmp_path, monkeypatch, capsys, isolated):
     source = tmp_path / "shot.png"
     source.write_bytes(png((100, 50)))
     detection = Detection(
         findings=(Finding("EMAIL_ADDRESS", (Box(10, 10, 30, 10),)),), records_remaining=41
     )
-    monkeypatch.setattr(eecc_redact.pipeline, "get_key", lambda: "shr_test_x")
+    isolated["key"] = "shr_test_x"
     monkeypatch.setattr(eecc_redact.pipeline, "Shinrai", lambda *a, **k: FakeClient(detection))
     assert main(["redact", str(source)]) == 0
     out = capsys.readouterr().out

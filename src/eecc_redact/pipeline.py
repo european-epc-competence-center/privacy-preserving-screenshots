@@ -6,11 +6,10 @@ Retry and Discard. The original capture is never offered.
 
 from functools import partial
 
-from eecc_redact import APP_NAME
+from eecc_redact import APP_NAME, keystore
 from eecc_redact.config import Config
 from eecc_redact.errors import AppError, Cancelled
 from eecc_redact.imaging import to_png
-from eecc_redact.keystore import ENV_VAR, get_key
 from eecc_redact.shinrai import Shinrai
 
 #: How long a one-shot capture keeps serving the clipboard after Copy.
@@ -18,11 +17,9 @@ CLIPBOARD_HOLD_SECONDS = 300
 
 
 def client_for(config: Config) -> Shinrai:
-    key = get_key()
+    key = keystore.get_key()
     if not key:
-        raise AppError(
-            f"No ShinrAI key. Run `{APP_NAME} key set`, or set {ENV_VAR} for a one-off run."
-        )
+        raise AppError(f"No ShinrAI key. Run `{APP_NAME} key set`.")
     return Shinrai(
         key,
         base_url=config.base_url,
