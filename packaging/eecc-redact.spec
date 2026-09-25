@@ -3,7 +3,7 @@
 import os
 import sys
 
-from PyInstaller.utils.hooks import collect_submodules, copy_metadata
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
 
 ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))  # noqa: F821 - PyInstaller global
 LINUX = sys.platform.startswith("linux")
@@ -23,8 +23,10 @@ analysis = Analysis(  # noqa: F821
     pathex=[os.path.join(ROOT, "src")],
     # keyring finds its backends through package metadata; without it the frozen
     # app silently falls back to a keyring that stores nothing. The app reads
-    # its own version from its metadata too.
-    datas=copy_metadata("keyring") + copy_metadata("eecc-redact"),
+    # its own version from its metadata too, and its images from the package.
+    datas=(
+        copy_metadata("keyring") + copy_metadata("eecc-redact") + collect_data_files("eecc_redact")
+    ),
     hiddenimports=collect_submodules("keyring.backends"),
     excludes=["pytest", "tkinter"],
 )
