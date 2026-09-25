@@ -14,7 +14,6 @@ dependencies = [
     "pillow>=11",
     "platformdirs>=4",
     "pyside6>=6.8",
-    "python-dotenv>=1.0",
 ]
 
 [project.urls]

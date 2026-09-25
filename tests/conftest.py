@@ -1,4 +1,4 @@
-"""Isolation for every test: no real config, keychain, .env or display.
+"""Isolation for every test: no real config, keychain or display.
 
 Dialog tests run in child processes (see `child`) so that a regression that
 hangs fails one test instead of freezing the suite.
@@ -18,19 +18,16 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 @pytest.fixture(autouse=True)
 def isolated(monkeypatch, tmp_path):
-    import eecc_redact.cli
     import eecc_redact.config
     import eecc_redact.desktop
     import eecc_redact.keystore
 
     monkeypatch.setattr(eecc_redact.config, "config_path", lambda: tmp_path / "config.toml")
-    monkeypatch.setattr(eecc_redact.cli, "load_dotenv", lambda: None)
     monkeypatch.setattr(eecc_redact.desktop, "install_launcher", lambda: None)  # not into ~
-    monkeypatch.delenv(eecc_redact.keystore.ENV_VAR, raising=False)
     for variable in ("APPIMAGE", "APPDIR"):  # never mistake the test run for an AppImage
         monkeypatch.delenv(variable, raising=False)
     store = {"key": ""}
-    monkeypatch.setattr(eecc_redact.keystore, "_read_keychain", lambda: store["key"])
+    monkeypatch.setattr(eecc_redact.keystore, "get_key", lambda: store["key"])
     monkeypatch.setattr(eecc_redact.keystore, "set_key", lambda key: store.__setitem__("key", key))
     monkeypatch.setattr(eecc_redact.keystore, "delete_key", lambda: store.__setitem__("key", ""))
     return store

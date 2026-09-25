@@ -1,37 +1,19 @@
 """Where the ShinrAI key lives.
 
-The key is the user's, not the project's. It goes in the OS keychain, or in the
-environment for development. It is never written to the config file or a log,
-never accepted on the command line, and scrubbed from anything shown.
+The key is the user's, not the project's. It goes in the OS keychain and nowhere
+else: never in the config file or a log, never accepted on the command line, and
+scrubbed from anything shown.
 """
 
-import os
 import re
 
 from eecc_redact import APP_NAME
 
-ENV_VAR = "SHINRAI_API_KEY"
 _ACCOUNT = "shinrai-api-key"
 _KEY = re.compile(r"shr_(live|test)_[A-Za-z0-9_\-]+")
 
 
-def key_source() -> tuple[str, str]:
-    """The key and where it came from: "environment", "keychain", or "" for none.
-
-    Only a keychain key is eecc-redact's to replace or remove.
-    """
-    key = os.environ.get(ENV_VAR, "").strip()
-    if key:
-        return key, "environment"
-    key = _read_keychain()
-    return (key, "keychain") if key else ("", "")
-
-
 def get_key() -> str:
-    return key_source()[0]
-
-
-def _read_keychain() -> str:
     try:
         import keyring
 

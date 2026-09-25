@@ -18,7 +18,7 @@ PRELUDE = """
 
     app = ensure_app()
     store = {"key": ""}
-    keystore._read_keychain = lambda: store["key"]
+    keystore.get_key = lambda: store["key"]
     keystore.set_key = lambda key: store.__setitem__("key", key)
     keystore.delete_key = lambda: store.__setitem__("key", "")
     desktop.set_autostart = lambda enabled: enabled          # never touch the OS
@@ -161,12 +161,11 @@ def test_a_recorded_hotkey_is_applied_and_saved_and_a_refused_one_is_not():
     assert "APPLIED ['ctrl+alt+k', 'alt+f9']" in out
 
 
-def test_the_key_from_the_environment_is_shown_but_left_alone():
+def test_a_desktop_owned_hotkey_is_opened_in_the_desktop_settings():
     out = child(
         PRELUDE,
         """
-        import os
-        os.environ["SHINRAI_API_KEY"] = "shr_test_FROM_ENV"
+        store["key"] = "shr_test_STORED"
         opened = []
         def open_settings():
             opened.append(1)
@@ -188,8 +187,8 @@ def test_the_key_from_the_environment_is_shown_but_left_alone():
         print("OPENED", len(opened))
     """,
     )
-    assert "Using the sandbox key from the environment" in out
-    assert "REMOVE False" in out
+    assert "STATUS A sandbox key is stored in" in out
+    assert "REMOVE True" in out
     assert "NOTE Ctrl+Shift+Print starts a capture." in out
     assert "EDIT None" in out  # nothing to record: the desktop owns the key
     assert "FIRST ''" in out and "Could not open them" in out.split("SECOND")[1]
