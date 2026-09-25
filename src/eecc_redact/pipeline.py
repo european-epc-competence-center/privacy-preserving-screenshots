@@ -23,7 +23,13 @@ def client_for(config: Config) -> Shinrai:
         raise AppError(
             f"No ShinrAI key. Run `{APP_NAME} key set`, or set {ENV_VAR} for a one-off run."
         )
-    return Shinrai(key, base_url=config.base_url, project=config.project, location=config.location)
+    return Shinrai(
+        key,
+        base_url=config.base_url,
+        project=config.project,
+        location=config.location,
+        api=config.api,
+    )
 
 
 def capture_once(config: Config, *, hold_clipboard: bool = False) -> int:

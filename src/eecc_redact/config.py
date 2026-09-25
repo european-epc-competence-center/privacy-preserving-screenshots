@@ -21,6 +21,11 @@ class Config:
     base_url: str = DEFAULT_BASE_URL
     project: str = APP_NAME
     location: str = "global"
+    #: Which ShinrAI route detects: ``auto`` takes the PII API v2 (``POST /v2/detect``,
+    #: every type the model offers, boxes in source pixels) whenever the deployment
+    #: serves images on it, else the Google-compatible ``image:redact``; ``v2`` and
+    #: ``google`` force one.
+    api: str = "auto"
     #: Pixels added on every side of a box; OCR boxes sit tight on the glyphs.
     box_padding: int = 2
     #: The capture hotkey in eecc-redact's syntax (ctrl+shift+print). On Linux this is
