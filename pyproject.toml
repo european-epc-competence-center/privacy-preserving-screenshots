@@ -1,6 +1,6 @@
 [project]
 name = "eecc-redact"
-version = "0.1.0"
+version = "1.0.1"
 description = "Screenshots with the personal data already covered"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
