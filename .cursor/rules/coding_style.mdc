@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+
+# Coding Style
+
+This is a production code repository. Whenever editing code make sure that any code changes improve code quality, clean code, deduplication (DRY) and maintainability. Make sure all changes are covered by tests. Lint and run all tests in all affected sub projects and fix all errors (also preexisting). Make sure to properly modularize the code into manageable sub modules. No code file should be larger than 2k lines, less than 1k lines are preferable. If a large module is encountered, carefully think about how to best modularize in order to increase deduplication and maintainability and decrease coupling.
+
+After finishing code changes, perform a critical review of the pending code changes in order to improve the implementation (not to write review docs). To this end
+git status
+check git diff of code files
+in this repo and all sub repos (if any). Then critically review the changes with the above clean code, DRY, etc. instructions and finally improve anything worth improving.

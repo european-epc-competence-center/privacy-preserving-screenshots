@@ -1,5 +1,7 @@
 import io
 import subprocess
+import tomllib
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -192,4 +194,6 @@ def test_uv_tool_detection_looks_at_the_interpreter_prefix(monkeypatch, tmp_path
 
 
 def test_the_version_is_the_package_version():
-    assert __version__ == "0.1.0"
+    pyproject = Path(__file__).parents[1] / "pyproject.toml"
+    version = tomllib.loads(pyproject.read_text())["project"]["version"]
+    assert __version__ == version
