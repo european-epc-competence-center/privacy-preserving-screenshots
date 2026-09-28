@@ -10,3 +10,4 @@
 ## Topics
 
 - [Release version](./release.md) — a `vX.Y.Z` tag is written into the project and committed back by the release workflows.
+- [UI surfaces and branding](./ui.md) — where the icon is drawn and used, the windows and installer pages, the EECC logo and slogan (`ui/settings.py`, `ui/assets/`, `packaging/windows/wizard-*.png`), and rendering dialogs offscreen.

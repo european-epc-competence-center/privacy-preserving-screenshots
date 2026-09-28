@@ -30,6 +30,8 @@ UninstallDisplayName=eecc-redact
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+WizardImageFile=wizard-panel.png
+WizardSmallImageFile=wizard-corner.png
 ; Close a running eecc-redact so its files can be replaced by a newer version.
 CloseApplications=force
 RestartApplications=no

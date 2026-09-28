@@ -1,5 +1,5 @@
 # Builds dist\eecc-redact-setup-<version>.exe and its .sha256.
-# Needs uv and Inno Setup 6 (https://jrsoftware.org/isinfo.php).
+# Needs uv and Inno Setup 6.5.2 or newer (https://jrsoftware.org/isinfo.php).
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $Root

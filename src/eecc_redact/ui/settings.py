@@ -9,9 +9,10 @@ nobody suspects a key was baked into the build.
 
 import html
 from collections.abc import Callable
+from importlib.resources import files
 
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtGui import QKeySequence
+from PySide6.QtGui import QKeySequence, QPalette, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -36,6 +37,9 @@ from eecc_redact.shinrai import Shinrai
 from eecc_redact.ui import Task, ensure_app, icon
 
 SIGNUP_URL = "https://shinrai.innovius.io"
+EECC_URL = "https://eecc.info"
+SLOGAN = f'Made with <span style="color:#E25555">♥</span> by <a href="{EECC_URL}">EECC</a>'
+LOGO_HEIGHT = 84
 #: Windows keeps Print Screen to itself: pressing it never reaches the recorder.
 PRINT_SCREEN_CHOICES = ("Print", "Ctrl+Print", "Shift+Print", "Alt+Print", "Ctrl+Shift+Print")
 
@@ -63,6 +67,21 @@ def _button(caption: str, name: str) -> QPushButton:
     button = QPushButton(caption, objectName=name)
     button.setAutoDefault(False)  # Enter in the key field checks the key, not closes
     return button
+
+
+def _logo(parent: QWidget) -> QLabel:
+    dark = parent.palette().color(QPalette.ColorRole.Window).lightness() < 128
+    name = "eecc-logo-on-dark.png" if dark else "eecc-logo-on-light.png"
+    pixmap = QPixmap()
+    pixmap.loadFromData(files(__package__).joinpath("assets", name).read_bytes())
+    ratio = parent.devicePixelRatioF()
+    pixmap = pixmap.scaledToHeight(
+        round(LOGO_HEIGHT * ratio), Qt.TransformationMode.SmoothTransformation
+    )
+    pixmap.setDevicePixelRatio(ratio)
+    label = QLabel(objectName="logo")
+    label.setPixmap(pixmap)
+    return label
 
 
 class SettingsDialog(QDialog):
@@ -96,14 +115,21 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(22, 20, 22, 16)
         layout.setSpacing(14)
+
+        # -- header
+        header = QHBoxLayout()
+        header.setSpacing(18)
+        header.addWidget(_logo(self))
         if first_run:
-            layout.addWidget(
+            header.addWidget(
                 _label(
                     f"<b>{APP_NAME} covers personal data in your screenshots before you share "
                     "them.</b><br>Screenshots are checked by ShinrAI, so it needs your own ShinrAI "
                     f'key. No key yet? <a href="{SIGNUP_URL}">Get a ShinrAI subscription</a>.'
-                )
+                ),
+                1,
             )
+        layout.addLayout(header)
 
         # -- key
         key_box = QGroupBox("ShinrAI key")
@@ -215,7 +241,9 @@ class SettingsDialog(QDialog):
 
         # -- footer
         footer = QHBoxLayout()
-        footer.addWidget(_label(f"{APP_NAME} {html.escape(__version__)}"))
+        credits = _label(f"{APP_NAME} {html.escape(__version__)} · {SLOGAN}", "credits")
+        credits.setWordWrap(False)  # a wrapping label next to a stretch shrinks to one word
+        footer.addWidget(credits)
         footer.addStretch(1)
         if first_run:
             quit_button = _button("Quit", "quit")

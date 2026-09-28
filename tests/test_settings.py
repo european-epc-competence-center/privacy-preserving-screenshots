@@ -81,6 +81,29 @@ def test_first_run_checks_the_key_before_saving_it_and_then_finishes():
     assert "FINISHED True STORED shr_test_FAKE_FOR_TESTS_123 COMPLETE True" in out
 
 
+def test_setup_and_settings_show_the_logo_for_the_palette_and_the_slogan():
+    out = child(
+        PRELUDE,
+        """
+        from PySide6.QtGui import QColor, QPalette
+        from eecc_redact import __version__
+        for first_run, window in ((True, "#F0F0F0"), (False, "#202020")):
+            app.setPalette(QPalette(QColor(window)))
+            dialog = SettingsDialog(config, first_run=first_run, client_factory=GoodClient)
+            logo = find(dialog, QLabel, "logo").pixmap().toImage()
+            white = any((c := logo.pixelColor(x, y)).alpha() > 128 and c.lightness() > 240
+                        for x in range(logo.width()) for y in range(logo.height()))
+            print(window, "WHITE", white)
+        credits = find(dialog, QLabel, "credits").text()
+        print("VERSION", __version__ in credits, "HEART", "♥" in credits,
+              "LINK", '<a href="https://eecc.info">EECC</a>' in credits)
+    """,
+    )
+    assert "#F0F0F0 WHITE False" in out  # dark wordmark on a light window
+    assert "#202020 WHITE True" in out
+    assert "VERSION True HEART True LINK True" in out
+
+
 def test_a_rejected_or_useless_key_is_not_saved():
     out = child(
         PRELUDE,
