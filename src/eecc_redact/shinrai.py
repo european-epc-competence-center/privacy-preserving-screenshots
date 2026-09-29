@@ -1,19 +1,13 @@
-"""The ShinrAI client.
+"""The ShinrAI client, on the ShinrAI PII API v2.
 
-Two routes give the same thing, every finding with its pixel boxes; the boxes
-are drawn locally:
+`POST /v2/detect` with an image input returns every entity the model offers
+with its boxes in the pixels of the capture; the boxes are drawn locally. One
+contract serves the hosted API, an in-cluster service and offline
+installations; the spec is `GET /v2/openapi.json` on the deployment.
 
-* the ShinrAI PII API v2, `POST /v2/detect` with an image input. One contract
-  for the hosted API, an in-cluster service and offline installations; every
-  type the model offers, boxes in source pixels, no vendor mapping in between.
-* the Google-DLP-compatible `image:redact`, kept for deployments that do not
-  serve the v2 API yet.
-
-`api = auto` (the default) reads `GET /v2/capabilities` once and takes v2
-whenever the deployment serves images on it. Calls are never retried
-automatically: neither route takes an idempotency key, and a dropped
-connection does not prove the call was not charged. The key goes only to the
-configured base URL, and redirects are not followed.
+Calls are never retried automatically: a dropped connection does not prove the
+call was not charged. The key goes only to the configured base URL, as a bearer
+token, and redirects are not followed.
 """
 
 import base64
@@ -23,16 +17,13 @@ from typing import Any
 
 import httpx
 
-from eecc_redact import APP_NAME
+from eecc_redact.config import DEFAULT_BASE_URL
 from eecc_redact.errors import AppError
 from eecc_redact.models import Box, Detection, Finding
 
-DEFAULT_BASE_URL = "https://api.shinrai.innovius.io"
-IMAGE_REDACT_PATHS = (
-    "/v2/projects/{project}/locations/{location}/image:redact",
-    "/v2/projects/{project}/image:redact",
-)
-API_CHOICES = ("auto", "v2", "google")
+#: The statuses in `GET /v2/capabilities` under which a feature can be used today.
+SERVED = ("ga", "beta")
+NO_IMAGES = "This ShinrAI deployment does not serve image detection on the PII API v2."
 #: The v2 error codes that mean "your key or plan", not "this deployment".
 KEY_CODES = {
     "invalid_key",
@@ -46,24 +37,16 @@ KEY_CODES = {
 
 @dataclass(frozen=True)
 class Capabilities:
-    """What one key and deployment allow. Read-only calls; no records spent."""
+    """What one key and deployment allow. Free, read-only calls; no records spent."""
 
-    image_redact: bool = False
+    #: `POST /v2/detect` takes images on the standard tier and the OCR is up.
+    serves_images: bool = False
     plan: str = ""
     records: int | None = None
     models: tuple[str, ...] = ()
-    info_types: tuple[str, ...] = ()
-    #: The PII API v2 answers, and serves images on the synchronous endpoints.
-    pii_api_v2: bool = False
-    image_v2: bool = False
+    #: The canonical types that are personal data (`GET /v2/types`).
+    types: tuple[str, ...] = ()
     ocr_languages: tuple[str, ...] = ()
-
-    @property
-    def route(self) -> str:
-        """Which route `api = auto` takes on this deployment."""
-        if self.image_v2:
-            return "v2"
-        return "google" if self.image_redact else "none"
 
 
 class Shinrai:
@@ -72,20 +55,11 @@ class Shinrai:
         key: str,
         *,
         base_url: str = DEFAULT_BASE_URL,
-        project: str = APP_NAME,
-        location: str = "global",
-        api: str = "auto",
         http: httpx.Client | None = None,
     ) -> None:
-        if api not in API_CHOICES:
-            raise AppError(f"Unknown api setting {api!r}; use one of {', '.join(API_CHOICES)}.")
         self.base_url = base_url.rstrip("/")
-        self.project = project
-        self.location = location
-        self.api = api
         self._key = key
         self._http = http or httpx.Client(timeout=60, follow_redirects=False)
-        self._image_v2: bool | None = None
 
     def __enter__(self) -> "Shinrai":
         return self
@@ -94,12 +68,15 @@ class Shinrai:
         self._http.close()
 
     def _send(
-        self, method: str, path: str, *, google: bool = False, timeout: float = 60, **kwargs: Any
+        self, method: str, path: str, *, timeout: float = 60, **kwargs: Any
     ) -> httpx.Response:
-        auth = {"x-goog-api-key": self._key} if google else {"Authorization": f"Bearer {self._key}"}
         try:
             return self._http.request(
-                method, self.base_url + path, headers=auth, timeout=timeout, **kwargs
+                method,
+                self.base_url + path,
+                headers={"Authorization": f"Bearer {self._key}"},
+                timeout=timeout,
+                **kwargs,
             )
         except httpx.HTTPError as exc:
             raise AppError("Could not reach ShinrAI.", detail=type(exc).__name__) from exc
@@ -107,71 +84,38 @@ class Shinrai:
     # -- capabilities ----------------------------------------------------------
 
     def capabilities(self) -> Capabilities:
-        resp = self._send("GET", "/v1/models")
-        if resp.status_code != 200:
-            _raise(resp)
-        body = resp.json() if resp.content else {}
-        models = tuple(
-            str(m.get("id") or m.get("name")) if isinstance(m, dict) else str(m)
-            for m in body.get("models") or body.get("data") or []
-        )
-
-        plan, records = "", None
-        usage = self._send("GET", "/v1/usage")
-        if usage.status_code == 200:
-            data = usage.json()
-            plan = str(data.get("plan", ""))
-            records = _int((data.get("balances") or {}).get("available_records"))
-
-        image_redact = False
-        spec = self._send("GET", "/openapi.json", timeout=30)
-        if spec.status_code == 200:
-            paths = (spec.json() or {}).get("paths") or {}
-            image_redact = any(path in paths for path in IMAGE_REDACT_PATHS)
-
-        info_types: tuple[str, ...] = ()
-        types = self._send("GET", "/v2/infoTypes", google=True)
-        if types.status_code == 200:
-            info_types = tuple(
-                sorted(
-                    row["name"]
-                    for row in (types.json() or {}).get("infoTypes") or []
-                    if isinstance(row, dict) and row.get("name")
-                )
-            )
-
-        pii_api_v2, image_v2, ocr_languages = self._v2_capabilities()
-        self._image_v2 = image_v2
-        return Capabilities(
-            image_redact, plan, records, models, info_types, pii_api_v2, image_v2, ocr_languages
-        )
-
-    def _v2_capabilities(self) -> tuple[bool, bool, tuple[str, ...]]:
-        """(v2 served, images served on v2, OCR languages). A missing route is a plain no."""
+        """Also the key check: a key the deployment rejects raises here."""
         resp = self._send("GET", "/v2/capabilities", timeout=30)
         if resp.status_code != 200:
-            return False, False, ()
-        try:
-            body = resp.json() or {}
-        except ValueError:
-            return False, False, ()
+            _raise(resp)
+        body = _json(resp)
         image = ((body.get("inputs") or {}).get("image") or {}).get("standard")
         ocr = body.get("ocr") or {}
-        served = image in ("ga", "beta") and bool(ocr.get("available", True))
-        return True, served, tuple(str(tag) for tag in ocr.get("languages") or ())
+        usage = self._optional("/v2/usage")
+        types = self._optional("/v2/types")
+        return Capabilities(
+            serves_images=image in SERVED and bool(ocr.get("available", True)),
+            plan=str(usage.get("plan") or ""),
+            records=_int(usage.get("available_records")),
+            models=_models(body),
+            types=tuple(
+                sorted(
+                    str(row["type"])
+                    for row in types.get("canonical") or ()
+                    if isinstance(row, dict) and row.get("type") and row.get("personal", True)
+                )
+            ),
+            ocr_languages=tuple(str(tag) for tag in ocr.get("languages") or ()),
+        )
+
+    def _optional(self, path: str) -> dict[str, Any]:
+        """A free extra; a deployment without it (no metering, say) is not an error."""
+        resp = self._send("GET", path, timeout=30)
+        return _json(resp) if resp.status_code == 200 else {}
 
     # -- detection -------------------------------------------------------------
 
     def detect(self, png: bytes) -> Detection:
-        if self.api == "google":
-            return self._detect_google(png)
-        if self.api == "v2":
-            return self._detect_v2(png)
-        if self._image_v2 is None:
-            self._image_v2 = self._v2_capabilities()[1]
-        return self._detect_v2(png) if self._image_v2 else self._detect_google(png)
-
-    def _detect_v2(self, png: bytes) -> Detection:
         payload = {
             "inputs": [
                 {
@@ -181,51 +125,44 @@ class Shinrai:
                     "data_b64": base64.b64encode(png).decode(),
                 }
             ],
-            # one box per recognised word, as the Google route reports them;
-            # the review toggles findings, not boxes
+            # one box per recognised word; the review toggles findings, not boxes
             "output": {"box_granularity": "word"},
         }
         resp = self._send("POST", "/v2/detect", json=payload, timeout=180)
         if resp.status_code != 200:
             _raise(resp)
-        body = resp.json() or {}
-        results = body.get("results") or []
-        entities = (results[0].get("entities") or []) if results else []
+        body = _json(resp)
+        result = next(iter(body.get("results") or ()), {})
+        if result.get("status") != "ok":
+            # Never "nothing detected" for a capture that was not read.
+            reason = str(result.get("status", "no result"))
+            if error := result.get("error"):
+                reason += f": {_describe(error)}"
+            raise AppError(
+                "ShinrAI could not check this capture.",
+                detail=f"{reason} (request {body.get('request_id', '?')})",
+            )
         findings = tuple(
             Finding(
                 str(entity.get("type") or "UNKNOWN"),
                 tuple(_box(box) for box in ((entity.get("coords") or {}).get("boxes") or [])),
             )
-            for entity in entities
+            for entity in result.get("entities") or []
         )
         usage = body.get("usage") or {}
         remaining = resp.headers.get("x-records-remaining") or usage.get("balance_after")
-        return Detection(
-            findings=findings,
-            records_remaining=_int(remaining),
-            warnings=resp.headers.get("x-shinrai-warnings", ""),
-        )
+        return Detection(findings=findings, records_remaining=_int(remaining))
 
-    def _detect_google(self, png: bytes) -> Detection:
-        location = f"/locations/{self.location}" if self.location else ""
-        payload = {
-            "byteItem": {"type": "IMAGE_PNG", "data": base64.b64encode(png).decode()},
-            "includeFindings": True,
-        }
-        resp = self._send(
-            "POST",
-            f"/v2/projects/{self.project}{location}/image:redact",
-            google=True,
-            json=payload,
-            timeout=120,
-        )
-        if resp.status_code != 200:
-            _raise(resp)
-        return Detection(
-            findings=_findings(resp.json() or {}),
-            records_remaining=_int(resp.headers.get("x-records-remaining")),
-            warnings=resp.headers.get("x-shinrai-warnings", ""),
-        )
+
+def _models(capabilities: dict[str, Any]) -> tuple[str, ...]:
+    """The models the deployment lists; the public profile may name only its default."""
+    listed = tuple(
+        str(model["id"])
+        for model in capabilities.get("models") or ()
+        if isinstance(model, dict) and model.get("id")
+    )
+    default = (capabilities.get("engine") or {}).get("model")
+    return listed or ((str(default),) if default else ())
 
 
 def _box(box: dict[str, Any]) -> Box:
@@ -236,10 +173,12 @@ def _box(box: dict[str, Any]) -> Box:
 
 
 def _raise(resp: httpx.Response) -> None:
-    """Turn a bad response into an error with a message worth showing."""
+    """Turn a v2 error envelope into an error with a message worth showing."""
     status = resp.status_code
-    code = _error_code(resp)
-    detail = f"HTTP {status}: {_error_text(resp)}"
+    error = _json(resp).get("error")
+    code = str(error.get("code", "")) if isinstance(error, dict) else ""
+    reason = _describe(error) if isinstance(error, dict) else resp.text[:200].strip()
+    detail = f"HTTP {status}: {reason}"
     if request_id := resp.headers.get("x-request-id"):
         detail += f" (request {request_id})"
     if status in (401, 403) or code in KEY_CODES:
@@ -255,8 +194,10 @@ def _raise(resp: httpx.Response) -> None:
             "This capture is larger than the deployment accepts; capture a smaller region.",
             detail=detail,
         )
-    if status in (404, 501, 503):
-        raise AppError("This ShinrAI deployment does not serve image redaction.", detail=detail)
+    if status in (404, 501):
+        raise AppError(NO_IMAGES, detail=detail)
+    if status == 503:
+        raise AppError("ShinrAI is busy or partly down. Try again in a moment.", detail=detail)
     if status == 429:
         wait = min(max(_float(resp.headers.get("retry-after"), 1.0), 0.5), 30.0)
         raise AppError(
@@ -266,42 +207,18 @@ def _raise(resp: httpx.Response) -> None:
     raise AppError(f"ShinrAI returned HTTP {status}.", detail=detail)
 
 
-def _error_code(resp: httpx.Response) -> str:
+def _json(resp: httpx.Response) -> dict[str, Any]:
+    """The body as an object; anything else counts as empty."""
     try:
         body = resp.json()
     except ValueError:
-        return ""
-    error = body.get("error") if isinstance(body, dict) else None
-    return str(error.get("code", "")) if isinstance(error, dict) else ""
+        return {}
+    return body if isinstance(body, dict) else {}
 
 
-def _error_text(resp: httpx.Response) -> str:
-    try:
-        body = resp.json()
-    except ValueError:
-        return resp.text[:200].strip()
-    error = body.get("error") if isinstance(body, dict) else None
-    if isinstance(error, dict):
-        parts = [str(error[k]) for k in ("code", "status", "message") if error.get(k)]
-        return " | ".join(parts) or json.dumps(error)[:200]
-    return json.dumps(body)[:200]
-
-
-def _findings(body: dict[str, Any]) -> tuple[Finding, ...]:
-    findings = []
-    for raw in (body.get("inspectResult") or {}).get("findings") or []:
-        boxes = tuple(
-            Box(
-                int(box.get("left", 0)),
-                int(box.get("top", 0)),
-                int(box.get("width", 0)),
-                int(box.get("height", 0)),
-            )
-            for location in (raw.get("location") or {}).get("contentLocations") or []
-            for box in (location.get("imageLocation") or {}).get("boundingBoxes") or []
-        )
-        findings.append(Finding((raw.get("infoType") or {}).get("name", "UNKNOWN"), boxes))
-    return tuple(findings)
+def _describe(error: dict[str, Any]) -> str:
+    parts = [str(error[k]) for k in ("code", "message") if error.get(k)]
+    return " | ".join(parts) or json.dumps(error)[:200]
 
 
 def _int(value: object) -> int | None:

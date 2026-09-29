@@ -20,13 +20,7 @@ def client_for(config: Config) -> Shinrai:
     key = keystore.get_key()
     if not key:
         raise AppError(f"No ShinrAI key. Run `{APP_NAME} key set`.")
-    return Shinrai(
-        key,
-        base_url=config.base_url,
-        project=config.project,
-        location=config.location,
-        api=config.api,
-    )
+    return Shinrai(key, base_url=config.base_url)
 
 
 def capture_once(config: Config, *, hold_clipboard: bool = False) -> int:

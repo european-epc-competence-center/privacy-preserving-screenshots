@@ -120,13 +120,8 @@ class ReviewDialog(QDialog):
             side_layout.addWidget(self.tree, 1)
         else:
             side_layout.addStretch(1)
-        notes = []
         if detection.records_remaining is not None:
-            notes.append(f"{detection.records_remaining:,} records left")
-        if detection.warnings:
-            notes.append(detection.warnings)
-        if notes:
-            note = QLabel(" · ".join(notes))
+            note = QLabel(f"{detection.records_remaining:,} records left")
             note.setWordWrap(True)
             note.setStyleSheet("color: palette(mid); font-size: 11px;")
             side_layout.addWidget(note)
