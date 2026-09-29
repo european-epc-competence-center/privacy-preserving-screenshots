@@ -43,7 +43,6 @@ class Finding:
 class Detection:
     findings: tuple[Finding, ...] = ()
     records_remaining: int | None = None
-    warnings: str = ""
 
     @property
     def boxes(self) -> list[Box]:

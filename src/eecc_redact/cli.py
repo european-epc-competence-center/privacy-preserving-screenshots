@@ -29,6 +29,7 @@ def cmd_doctor(_args: argparse.Namespace, config: Config) -> int:
         return 2
     from eecc_redact.capture import backend
     from eecc_redact.pipeline import client_for
+    from eecc_redact.shinrai import NO_IMAGES
 
     with client_for(config) as client:
         caps = client.capabilities()
@@ -37,25 +38,10 @@ def cmd_doctor(_args: argparse.Namespace, config: Config) -> int:
         ("key", environment(key)),
         ("plan", caps.plan or "unknown"),
         ("records", f"{caps.records:,} left" if caps.records is not None else "unknown"),
-        ("models", (", ".join(caps.models) or "none reported") + "  (usable with this key)"),
-        (
-            "PII API v2",
-            ("served, images " + ("served" if caps.image_v2 else "not served"))
-            if caps.pii_api_v2
-            else "not served",
-        ),
+        ("models", ", ".join(caps.models) or "none reported"),
+        ("images", "served (POST /v2/detect)" if caps.serves_images else "NOT SERVED"),
         ("OCR languages", ", ".join(caps.ocr_languages) or "not reported"),
-        ("image:redact", "served" if caps.image_redact else "MISSING"),
-        ("info types", f"{len(caps.info_types)} kinds of personal data detected"),
-        (
-            "route",
-            {
-                "v2": "PII API v2 (POST /v2/detect)",
-                "google": "Google-compatible image:redact",
-                "none": "NONE",
-            }[caps.route if config.api == "auto" else ("v2" if config.api == "v2" else "google")]
-            + f"  (api = {config.api})",
-        ),
+        ("types", f"{len(caps.types)} kinds of personal data detected"),
     ]
     if backend() == "portal":
         rows += [("capture", "the desktop's own picker (Wayland)"), ("portals", _portal_report())]
@@ -63,12 +49,8 @@ def cmd_doctor(_args: argparse.Namespace, config: Config) -> int:
         rows.append(("capture", "frozen screen with a selection overlay"))
     for name, value in rows:
         print(f"{name:<14}{value}")
-    if not caps.image_redact and not caps.image_v2:
-        print(
-            f"\nThis deployment serves neither the PII API v2 with images nor image:redact; "
-            f"{APP_NAME} cannot redact against it.",
-            file=sys.stderr,
-        )
+    if not caps.serves_images:
+        print(f"\n{NO_IMAGES} {APP_NAME} cannot redact against it.", file=sys.stderr)
         return 1
     return 0
 

@@ -33,7 +33,7 @@ from eecc_redact import APP_NAME, __version__, desktop, keystore, platforms
 from eecc_redact.config import Config
 from eecc_redact.errors import AppError
 from eecc_redact.hotkeys import DEFAULT_HOTKEY, parse_hotkey
-from eecc_redact.shinrai import Shinrai
+from eecc_redact.shinrai import NO_IMAGES, Shinrai
 from eecc_redact.ui import Task, ensure_app, icon
 
 SIGNUP_URL = "https://shinrai.innovius.io"
@@ -295,9 +295,7 @@ class SettingsDialog(QDialog):
         config = self.config
 
         def work():
-            with self.client_factory(
-                key, base_url=config.base_url, project=config.project, location=config.location
-            ) as client:
+            with self.client_factory(key, base_url=config.base_url) as client:
                 return client.capabilities()
 
         task = Task(work)
@@ -315,13 +313,8 @@ class SettingsDialog(QDialog):
                 else (f"The key could not be checked ({type(error).__name__}).")
             )
             self.key_result.setText(_error(message))
-        elif not capabilities.image_redact:
-            self.key_result.setText(
-                _error(
-                    "The key works, but this ShinrAI deployment offers no image redaction, so "
-                    f"{APP_NAME} cannot use it. The key was not saved."
-                )
-            )
+        elif not capabilities.serves_images:
+            self.key_result.setText(_error(f"The key works. {NO_IMAGES} The key was not saved."))
         else:
             keystore.set_key(key)
             self.key_field.clear()

@@ -17,10 +17,10 @@ sends the captured region, as an RGB PNG with all metadata stripped, to the
 [ShinrAI PII API v2](https://shinrai.innovius.io/public-docs/pii-api-v2.md)
 (`POST /v2/detect` with an image input) and gets back every finding the model
 offers with its boxes in the pixels of the capture. The boxes are drawn
-locally, on the original frame. A deployment that does not serve images on
-the v2 API yet is used through its Google-compatible `image:redact` endpoint;
-`api = "v2"` or `api = "google"` in the settings file forces one route, the
-default `auto` decides from `GET /v2/capabilities` once per run.
+locally, on the original frame. The v2 API is the only one used: a key is
+accepted when `GET /v2/capabilities` says the deployment serves images with
+OCR. `base_url` in the settings file points at another deployment (in-cluster
+or offline).
 
 ## Develop
 
@@ -68,7 +68,7 @@ removes all of it again, the program included.
 | `eecc-redact` | Setup on first run, then the tray. If a tray already runs, opens its settings. Ctrl-C quits; `eecc-redact &` keeps the terminal free. |
 | `eecc-redact capture` | One capture. Handed to the running tray if there is one; the command to bind to a key on desktops without a shortcuts portal. |
 | `eecc-redact redact FILE [-o OUT]` | Headless: file in, redacted file out. No Qt. |
-| `eecc-redact doctor` | Checks the key against ShinrAI (plan, records left, models, whether `image:redact` is served) and the desktop (capture method, portals). Read-only, spends nothing. |
+| `eecc-redact doctor` | Checks the key against ShinrAI (plan, records left, models, whether images are served on the PII API v2, OCR languages) and the desktop (capture method, portals). Read-only, spends nothing. |
 | `eecc-redact key [set\|delete]` | Show, store (prompted, never as an argument) or remove the key. |
 | `eecc-redact uninstall [--forget-key]` | Stop the tray, turn off starting at login, remove the settings and the launcher entry, ask about the key, then remove the program if it was installed with `uv tool`. |
 
@@ -78,7 +78,7 @@ removes all of it again, the program included.
 src/eecc_redact/
 ├── cli.py          the commands above
 ├── pipeline.py     capture → detect → review → release, shared by tray and CLI
-├── shinrai.py      API client: image:redact and the read-only capability check
+├── shinrai.py      API client: PII API v2 detection and the read-only capability check
 ├── imaging.py      PNG normalization and drawing the boxes
 ├── models.py       Box, Finding, Detection
 ├── config.py       settings file (never the key)
