@@ -4,4 +4,6 @@
 
 `packaging/set_release_version.py` runs from `.github/workflows/windows-installer.yml` and `linux-appimage.yml` on a `vX.Y.Z` tag. It sets the version with `uv version` (project file and lock only), commits that to the default branch, and moves the tag onto the new commit. The branch push is a fast-forward. The tag ref is force-updated only when the commits it gains change `pyproject.toml` and `uv.lock`.
 
+Steps: move `Changelog/Unreleased/*` into `Changelog/X.Y.Z--YYYY-MM-DD/` on the feature branch, merge into `main`, then tag `main`'s tip and push only the tag. Never bump `pyproject.toml` by hand. The script refuses a tag that is not the branch tip, so nothing may land on `main` between tagging and the workflow runs. Both workflows attach their build to the GitHub release for the tag.
+
 The installers do not store a second version. `packaging/windows/build.ps1` and `packaging/linux/build.sh` read `__version__`. Inno Setup's `AppVersion` is passed in on the `ISCC` command line; `0.0.0` in `packaging/windows/eecc-redact.iss` applies only when that define is missing.
