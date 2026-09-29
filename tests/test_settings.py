@@ -35,7 +35,7 @@ PRELUDE = """
         def __exit__(self, *exc):
             return False
         def capabilities(self):
-            return Capabilities(image_redact=True, plan="starter", records=49566)
+            return Capabilities(serves_images=True, plan="starter", records=49566)
 
     class RejectingClient(GoodClient):
         def capabilities(self):
@@ -116,6 +116,7 @@ def test_a_rejected_or_useless_key_is_not_saved():
                 when(lambda: "not saved" in find(dialog, QLabel, "keyResult").text()
                      or "rejected" in find(dialog, QLabel, "keyResult").text(), after)
             def after():
+                print("RESULT", find(dialog, QLabel, "keyResult").text())
                 print("FINISH_ENABLED", find(dialog, QPushButton, "finish").isEnabled())
                 dialog.reject()
             QTimer.singleShot(100, start)
@@ -125,6 +126,7 @@ def test_a_rejected_or_useless_key_is_not_saved():
     )
     assert out.count("FINISH_ENABLED False") == 2
     assert out.count("STORED ''") == 2
+    assert "The key works. This ShinrAI deployment does not serve image detection" in out
 
 
 def test_a_left_over_key_is_pointed_out_and_can_be_replaced_or_removed():

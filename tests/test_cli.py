@@ -11,11 +11,13 @@ from conftest import png
 from eecc_redact import APP_NAME, __version__
 from eecc_redact.cli import main
 from eecc_redact.models import Box, Detection, Finding
+from eecc_redact.shinrai import NO_IMAGES, Capabilities
 
 
 class FakeClient:
-    def __init__(self, detection):
+    def __init__(self, detection=None, capabilities=None):
         self.detection = detection
+        self.caps = capabilities
 
     def __enter__(self):
         return self
@@ -25,6 +27,9 @@ class FakeClient:
 
     def detect(self, png):
         return self.detection
+
+    def capabilities(self):
+        return self.caps
 
 
 def test_a_key_on_the_command_line_is_refused_without_echoing_it(capsys):
@@ -48,6 +53,36 @@ def test_version_and_key_status(capsys, isolated):
 def test_doctor_without_a_key_says_what_to_do(capsys):
     assert main(["doctor"]) == 2
     assert f"{APP_NAME} key set" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("serves_images", [True, False])
+def test_doctor_reports_what_the_deployment_serves(monkeypatch, capsys, isolated, serves_images):
+    import eecc_redact.capture
+
+    caps = Capabilities(
+        serves_images=serves_images,
+        plan="starter",
+        records=49566,
+        models=("v1.4",),
+        types=("EMAIL", "IBAN"),
+        ocr_languages=("de", "en"),
+    )
+    opened = {}
+
+    def client(key, **kwargs):
+        opened.update(kwargs, key=key)
+        return FakeClient(capabilities=caps)
+
+    isolated["key"] = "shr_test_x"
+    monkeypatch.setattr(eecc_redact.pipeline, "Shinrai", client)
+    monkeypatch.setattr(eecc_redact.capture, "backend", lambda: "overlay")
+    assert main(["doctor"]) == (0 if serves_images else 1)
+    out = capsys.readouterr()
+    assert opened == {"key": "shr_test_x", "base_url": "https://api.shinrai.innovius.io"}
+    for fragment in ("starter", "49,566 left", "v1.4", "de, en", "2 kinds of personal data"):
+        assert fragment in out.out
+    assert ("served (POST /v2/detect)" if serves_images else "NOT SERVED") in out.out
+    assert (NO_IMAGES in out.err) is not serves_images
 
 
 def test_redact_burns_the_reported_boxes_into_a_new_file(tmp_path, monkeypatch, capsys, isolated):

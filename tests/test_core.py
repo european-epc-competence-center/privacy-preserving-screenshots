@@ -19,7 +19,7 @@ def test_config_round_trips_and_ignores_unknown_keys():
     assert path == eecc_redact.config.config_path()
     text = path.read_text()
     assert "hotkey = " in text
-    path.write_text(text + 'update_url = "gone"\n')
+    path.write_text(text + 'update_url = "gone"\napi = "google"\nproject = "eecc-redact"\n')
     loaded = Config.load()
     assert loaded == config
 
